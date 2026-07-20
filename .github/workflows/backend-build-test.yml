@@ -22,7 +22,7 @@ name: Backend CI
 
 on:
   push:
-    branches: [ master, dev, action* ]
+    branches: [ master, dev, action*, codelogic/** ]
     paths-ignore:
       - '**.md'
       - 'home/**'
@@ -66,6 +66,15 @@ jobs:
           path: dist/
           retention-days: 1
           compression-level: 0
+
+      # codelogic-build-feedback
+      - name: Send build info to CodeLogic
+        if: always()
+        uses: CodeLogicIncEngineering/codelogic-send-build-info-github-action@v1
+        with:
+          server-url: ${{ secrets.CODELOGIC_HOST }}
+          agent-uuid: ${{ secrets.AGENT_UUID }}
+          agent-password: ${{ secrets.AGENT_PASSWORD }}
 
   backend-maven-e2e:
     runs-on: ubuntu-latest
