@@ -17,12 +17,13 @@
 
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+# codelogic-build-feedback
 
 name: Backend CI
 
 on:
   push:
-    branches: [ master, dev, action* ]
+    branches: [ master, dev, action*, 'codelogic/**' ]
     paths-ignore:
       - '**.md'
       - 'home/**'
@@ -50,7 +51,12 @@ jobs:
       - uses: ./script/ci/github-actions/setup-deps
 
       - name: Build with Maven
-        run: mvnd clean -B package -pl '!hertzbeat-e2e' -Prelease -Dmaven.test.skip=false --file pom.xml
+        env:
+          NO_COLOR: "1"
+          TERM: dumb
+        run: |
+          set -o pipefail
+          mvnd clean -B package -pl '!hertzbeat-e2e' -Prelease -Dmaven.test.skip=false --file pom.xml 2>&1 | tee ${{ github.workspace }}/build.log
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
@@ -66,6 +72,19 @@ jobs:
           path: dist/
           retention-days: 1
           compression-level: 0
+
+      - name: Send Lineai Build Info
+        if: always()
+        uses: lineai-intelligence/lineai-send-build-info-github-action@v1.0.3
+        with:
+          lineai_host: ${{ vars.LINEAI_HOST }}
+          agent_uuid: ${{ vars.AGENT_UUID }}
+          agent_password: ${{ secrets.AGENT_PASSWORD }}
+          job_name: ${{ github.workflow }}
+          build_number: ${{ github.run_number }}
+          build_status: ${{ job.status }}
+          pipeline_system: GitHub Actions
+          log_file: /github/workspace/build.log
 
   backend-maven-e2e:
     runs-on: ubuntu-latest
